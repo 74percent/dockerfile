@@ -41,3 +41,6 @@ RUN apk add --no-cache --virtual .build-deps \
     && pecl install rdkafka \
     && docker-php-ext-enable rdkafka \
     && apk del .build-deps
+
+# install composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
