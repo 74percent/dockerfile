@@ -1,0 +1,55 @@
+FROM php:8.1-fpm-alpine3.15
+
+RUN sed -i 's/https/http/' /etc/apk/repositories
+RUN apk add curl
+RUN apk add --no-cache --virtual .build-deps \
+        libxml2-dev \
+        shadow \
+        autoconf \
+        g++ \
+        make \
+        git \
+        librdkafka-dev \
+        libpng-dev \
+        libzip-dev \
+        imagemagick6-dev \
+        ffmpeg-dev \
+        openssl-dev \
+    && apk add libstdc++ librdkafka ssmtp libpng libzip imagemagick6 ffmpeg openssl \
+    && docker-php-ext-install pdo_mysql \
+    && docker-php-ext-install bcmath \
+    && pecl install redis \
+    && pecl install mongodb \
+    && pecl install rdkafka \
+    && docker-php-ext-enable redis mongodb rdkafka \
+    && docker-php-ext-install sockets \
+    && docker-php-ext-install gd \
+    && docker-php-ext-install zip \
+    && docker-php-ext-install opcache \
+    && git clone https://github.com/Imagick/imagick.git \
+    && ( \
+        cd imagick \
+        && phpize \
+        && ./configure \
+        && make \
+        && make install \
+    ) \
+    && rm -rf imagick \
+    && docker-php-ext-enable imagick \
+    && curl -fsSL 'https://pecl.php.net/get/swoole-4.8.6.tgz' -o swoole.tgz \
+    && mkdir -p swoole \
+    && tar -xf swoole.tgz -C swoole --strip-components=1 \
+    && rm swoole.tgz \
+    && ( \
+        cd swoole \
+        && phpize \
+        && ./configure --enable-mysqlnd --enable-sockets --enable-openssl \
+        && make -j "$(nproc)" \
+        && make install \
+    ) \
+    && rm -r swoole \
+    && docker-php-ext-enable swoole \
+    && apk del .build-deps
+
+# install composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
